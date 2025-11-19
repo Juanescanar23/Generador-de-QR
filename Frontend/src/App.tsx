@@ -42,6 +42,7 @@ function App() {
   const [qrCodeImage, setQrCodeImage] = useState('');
   const [shareLink, setShareLink] = useState('');
   const [copyMessage, setCopyMessage] = useState('');
+  const [shareStatus, setShareStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<GeneratorType>('url'); // 'url', 'whatsapp' o 'share'
   const currentYear = new Date().getFullYear();
@@ -138,6 +139,40 @@ function App() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleShareQR = async () => {
+    if (!qrCodeImage) return;
+
+    try {
+      const response = await fetch(qrCodeImage);
+      const blob = await response.blob();
+      const files = [
+        new File([blob], 'qrcode.png', {
+          type: 'image/png',
+        }),
+      ];
+
+      if (navigator.canShare?.({ files })) {
+        await navigator.share({
+          title: 'Código QR generado',
+          text: 'Comparte este código QR o el enlace wa.me listo para usar.',
+          files,
+        });
+        setShareStatus('Código QR compartido');
+      } else {
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent('Mira este QR: ' + (shareLink || ''))}`,
+          '_blank'
+        );
+        setShareStatus('Se abrió WhatsApp Web para compartir');
+      }
+    } catch (error) {
+      console.error('No se pudo compartir el QR:', error);
+      setShareStatus('No se pudo compartir el QR');
+    } finally {
+      setTimeout(() => setShareStatus(''), 2500);
+    }
   };
 
   return (
@@ -294,18 +329,29 @@ function App() {
               </div>
             )}
             {qrCodeImage ? (
-              <div className="text-center">
+              <div className="text-center space-y-4">
                 <img 
                   src={qrCodeImage} 
                   alt="Código QR" 
                   className="mx-auto my-4 w-full max-w-[180px] sm:max-w-[200px] lg:max-w-[250px] h-auto" 
                 />
-                <button
-                  onClick={handleDownloadQR}
-                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm sm:text-base"
-                >
-                  Descargar QR
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={handleDownloadQR}
+                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm sm:text-base"
+                  >
+                    Descargar QR
+                  </button>
+                  <button
+                    onClick={handleShareQR}
+                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                  >
+                    Compartir QR
+                  </button>
+                </div>
+                {shareStatus && (
+                  <p className="text-xs text-green-600">{shareStatus}</p>
+                )}
               </div>
             ) : (
               <p className="text-center text-gray-500 text-sm sm:text-base py-8 sm:py-12">No hay código QR generado.</p>
