@@ -1,5 +1,6 @@
-import { useMemo, useState, type SVGProps } from 'react';
-import { Code2, Link, MessageCircle } from 'lucide-react';
+import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState, type SVGProps } from 'react';
+import { ChevronDown, Code2, Link, MessageCircle } from 'lucide-react';
+import QRCodeStyling from 'qr-code-styling';
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? 'https://generador-qr-backend.vercel.app/api'
@@ -34,6 +35,86 @@ const GitHubIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+type FrameStyle = 'none' | 'soft-card' | 'badge' | 'scooter';
+type PatternStyle = 'rounded' | 'dots' | 'classy' | 'rounded-square' | 'square';
+type CornerStyle = 'square' | 'dot' | 'extra-rounded';
+
+type DesignOptions = {
+  frameStyle: FrameStyle;
+  frameText: string;
+  frameColor: string;
+  frameUseGradient: boolean;
+  frameGradientStart: string;
+  frameGradientEnd: string;
+  frameBgColor: string;
+  frameBgUseGradient: boolean;
+  frameBgGradientStart: string;
+  frameBgGradientEnd: string;
+  frameTextColor: string;
+  patternStyle: PatternStyle;
+  patternColor: string;
+  patternUseGradient: boolean;
+  patternGradientStart: string;
+  patternGradientEnd: string;
+  patternBgColor: string;
+  patternBgTransparent: boolean;
+  cornerStyle: CornerStyle;
+  cornerOuterColor: string;
+  cornerInnerColor: string;
+  logoDataUrl: string;
+  logoSize: number;
+};
+
+const DEFAULT_DESIGN_OPTIONS: DesignOptions = {
+  frameStyle: 'soft-card',
+  frameText: '¡Escanéame!',
+  frameColor: '#111827',
+  frameUseGradient: false,
+  frameGradientStart: '#6366f1',
+  frameGradientEnd: '#8b5cf6',
+  frameBgColor: '#ffffff',
+  frameBgUseGradient: false,
+  frameBgGradientStart: '#ffffff',
+  frameBgGradientEnd: '#f3f4f6',
+  frameTextColor: '#111827',
+  patternStyle: 'rounded',
+  patternColor: '#111827',
+  patternUseGradient: false,
+  patternGradientStart: '#111827',
+  patternGradientEnd: '#6366f1',
+  patternBgColor: '#ffffff',
+  patternBgTransparent: false,
+  cornerStyle: 'extra-rounded',
+  cornerOuterColor: '#111827',
+  cornerInnerColor: '#111827',
+  logoDataUrl: '',
+  logoSize: 0.22,
+};
+
+const FRAME_OPTIONS: Array<{ id: FrameStyle; label: string; description: string }> = [
+  { id: 'none', label: 'Libre', description: 'Solo el QR sin decoraciones' },
+  { id: 'soft-card', label: 'Tarjeta', description: 'Marco redondeado con texto' },
+  { id: 'badge', label: 'Badge', description: 'Marco con acento lateral' },
+  { id: 'scooter', label: 'Scooter', description: 'Perfecto para envíos y delivery' },
+];
+
+const PATTERN_OPTIONS: Array<{ id: PatternStyle; label: string }> = [
+  { id: 'rounded', label: 'Ondas suaves' },
+  { id: 'dots', label: 'Puntos' },
+  { id: 'classy', label: 'Clásico' },
+  { id: 'rounded-square', label: 'Pixel suave' },
+  { id: 'square', label: 'Cuadrado' },
+];
+
+const CORNER_OPTIONS: Array<{ id: CornerStyle; label: string }> = [
+  { id: 'extra-rounded', label: 'Bubble' },
+  { id: 'dot', label: 'Puntos' },
+  { id: 'square', label: 'Clásico' },
+];
+
+const SCOOTER_PATH =
+  'M5.5 16.5h2.2l1-2.8h6.1l1.1 2.8h1.6a3 3 0 110 2h-1.3a3 3 0 11-5.6 0H8.7a3 3 0 11-5.6 0H2v-2h1.6l.9-2.4a3 3 0 012.8-2h2.8L16 6.5h3.4L20.9 9h-3.6l-2.2 3.7h-6.4l-.6 1.8h-3z';
+
 type GeneratorType = 'url' | 'whatsapp' | 'share';
 
 function App() {
@@ -45,11 +126,30 @@ function App() {
   const [shareStatus, setShareStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<GeneratorType>('url'); // 'url', 'whatsapp' o 'share'
+  const [lastGeneratedValue, setLastGeneratedValue] = useState('');
+  const [designOptions, setDesignOptions] = useState<DesignOptions>(DEFAULT_DESIGN_OPTIONS);
+  const [styledQrImage, setStyledQrImage] = useState('');
+  const [designLoading, setDesignLoading] = useState(false);
+  const [accordionOpen, setAccordionOpen] = useState<Record<string, boolean>>({
+    frame: true,
+    pattern: true,
+    corners: true,
+    logo: false,
+  });
   const currentYear = new Date().getFullYear();
   const appVersion = useMemo(() => {
     const backendVersion = import.meta.env.VITE_BACKEND_VERSION;
     return backendVersion ?? '1.0.0';
   }, []);
+  const displayedQrImage = styledQrImage || qrCodeImage;
+
+  const updateDesign = (updates: Partial<DesignOptions>) => {
+    setDesignOptions((prev) => ({ ...prev, ...updates }));
+  };
+
+  const toggleSection = (key: keyof typeof accordionOpen) => {
+    setAccordionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleTypeChange = (newType: GeneratorType) => {
     setType(newType);
@@ -105,6 +205,7 @@ function App() {
 
       if (response.ok) {
         setQrCodeImage(data.qrCode);
+        setLastGeneratedValue(finalUrl);
       } else {
         alert('Error: ' + data.error);
       }
@@ -131,10 +232,10 @@ function App() {
   };
 
   const handleDownloadQR = () => {
-    if (!qrCodeImage) return;
+    if (!displayedQrImage) return;
 
     const a = document.createElement('a');
-    a.href = qrCodeImage;
+    a.href = displayedQrImage;
     a.download = 'qrcode.png';
     document.body.appendChild(a);
     a.click();
@@ -142,10 +243,10 @@ function App() {
   };
 
   const handleShareQR = async () => {
-    if (!qrCodeImage) return;
+    if (!displayedQrImage) return;
 
     try {
-      const response = await fetch(qrCodeImage);
+      const response = await fetch(displayedQrImage);
       const blob = await response.blob();
       const files = [
         new File([blob], 'qrcode.png', {
@@ -161,8 +262,9 @@ function App() {
         });
         setShareStatus('Código QR compartido');
       } else {
+        const fallbackLink = shareLink || lastGeneratedValue || '';
         window.open(
-          `https://wa.me/?text=${encodeURIComponent('Mira este QR: ' + (shareLink || ''))}`,
+          `https://wa.me/?text=${encodeURIComponent('Mira este QR: ' + fallbackLink)}`,
           '_blank'
         );
         setShareStatus('Se abrió WhatsApp Web para compartir');
@@ -174,6 +276,230 @@ function App() {
       setTimeout(() => setShareStatus(''), 2500);
     }
   };
+
+  const handleLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      alert('El logo debe pesar menos de 1 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateDesign({ logoDataUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearLogo = () => updateDesign({ logoDataUrl: '' });
+
+  useEffect(() => {
+    if (!lastGeneratedValue) {
+      setStyledQrImage('');
+      return;
+    }
+
+    let isActive = true;
+
+    const generateStyledQr = async () => {
+      setDesignLoading(true);
+      try {
+        const qr = new QRCodeStyling({
+          width: 480,
+          height: 480,
+          data: lastGeneratedValue,
+          qrOptions: {
+            errorCorrectionLevel: 'H',
+            typeNumber: 0,
+          },
+          dotsOptions: {
+            type: designOptions.patternStyle,
+            color: designOptions.patternUseGradient ? undefined : designOptions.patternColor,
+            gradient: designOptions.patternUseGradient
+              ? {
+                  type: 'linear',
+                  rotation: 0,
+                  colorStops: [
+                    { offset: 0, color: designOptions.patternGradientStart },
+                    { offset: 1, color: designOptions.patternGradientEnd },
+                  ],
+                }
+              : undefined,
+          },
+          cornersSquareOptions: {
+            type: designOptions.cornerStyle,
+            color: designOptions.cornerOuterColor,
+          },
+          cornersDotOptions: {
+            type: designOptions.cornerStyle === 'square' ? 'square' : 'dot',
+            color: designOptions.cornerInnerColor,
+          },
+          backgroundOptions: {
+            color: designOptions.patternBgTransparent ? 'rgba(0,0,0,0)' : designOptions.patternBgColor,
+          },
+          imageOptions: designOptions.logoDataUrl
+            ? {
+                crossOrigin: 'anonymous',
+                hideBackgroundDots: false,
+                image: designOptions.logoDataUrl,
+                margin: 8,
+                imageSize: designOptions.logoSize,
+              }
+            : undefined,
+        });
+
+        const rawData = await qr.getRawData('png');
+        if (!rawData) {
+          if (isActive) setStyledQrImage(qrCodeImage);
+          return;
+        }
+
+        const base64 = await blobToDataUrl(rawData as Blob);
+        const framed = await applyFrameToQr(base64, designOptions);
+        if (isActive) {
+          setStyledQrImage(framed);
+        }
+      } catch (error) {
+        console.error('Error aplicando estilos al QR:', error);
+        if (isActive) {
+          setStyledQrImage(qrCodeImage);
+        }
+      } finally {
+        if (isActive) {
+          setDesignLoading(false);
+        }
+      }
+    };
+
+    generateStyledQr();
+
+    return () => {
+      isActive = false;
+    };
+  }, [designOptions, lastGeneratedValue, qrCodeImage]);
+
+  const DesignerSection = ({
+    id,
+    title,
+    description,
+    children,
+    open,
+    onToggle,
+  }: {
+    id: string;
+    title: string;
+    description: string;
+    children: ReactNode;
+    open: boolean;
+    onToggle: (key: keyof typeof accordionOpen) => void;
+  }) => (
+    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
+      <button
+        type="button"
+        onClick={() => onToggle(id as keyof typeof accordionOpen)}
+        className="w-full px-5 py-4 flex items-center justify-between"
+      >
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
+        <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${open ? '' : 'rotate-180'}`} />
+      </button>
+      <div
+        className={`transition-all duration-300 ${
+          open ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-5 pb-5 border-t border-gray-100 space-y-4">{children}</div>
+      </div>
+    </div>
+  );
+
+  const ColorController = ({
+    label,
+    value,
+    onChange,
+    gradientEnabled,
+    onToggleGradient,
+    gradientStart,
+    gradientEnd,
+    onChangeGradientStart,
+    onChangeGradientEnd,
+  }: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    gradientEnabled?: boolean;
+    onToggleGradient?: (checked: boolean) => void;
+    gradientStart?: string;
+    gradientEnd?: string;
+    onChangeGradientStart?: (value: string) => void;
+    onChangeGradientEnd?: (value: string) => void;
+  }) => (
+    <div className="bg-gray-50 rounded-xl p-4">
+      <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
+        <span>{label}</span>
+        {onToggleGradient && (
+          <label className="flex items-center gap-2 text-gray-500">
+            <input
+              type="checkbox"
+              checked={Boolean(gradientEnabled)}
+              onChange={(e) => onToggleGradient(e.target.checked)}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Gradiente
+          </label>
+        )}
+      </div>
+      <div className="mt-3">
+        <ColorSwatch value={value} onChange={onChange} />
+      </div>
+      {gradientEnabled && gradientStart && gradientEnd && onChangeGradientStart && onChangeGradientEnd && (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <ColorSwatch
+            label="Inicio"
+            value={gradientStart}
+            onChange={onChangeGradientStart}
+          />
+          <ColorSwatch
+            label="Fin"
+            value={gradientEnd}
+            onChange={onChangeGradientEnd}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  const ColorSwatch = ({
+    label,
+    value,
+    onChange,
+  }: {
+    label?: string;
+    value: string;
+    onChange: (value: string) => void;
+  }) => (
+    <div>
+      {label && <span className="text-xs uppercase tracking-wide text-gray-500">{label}</span>}
+      <div className="flex items-center gap-3 mt-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-14 rounded border border-gray-200 bg-white"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-200 p-2 text-sm font-mono focus:border-indigo-500 focus:ring-indigo-500"
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -328,13 +654,16 @@ function App() {
                 )}
               </div>
             )}
-            {qrCodeImage ? (
+            {displayedQrImage ? (
               <div className="text-center space-y-4">
                 <img 
-                  src={qrCodeImage} 
+                  src={displayedQrImage} 
                   alt="Código QR" 
-                  className="mx-auto my-4 w-full max-w-[180px] sm:max-w-[200px] lg:max-w-[250px] h-auto" 
+                  className="mx-auto my-4 w-full max-w-[180px] sm:max-w-[200px] lg:max-w-[250px] h-auto rounded-xl shadow-sm" 
                 />
+                {designLoading && (
+                  <p className="text-xs text-gray-500">Actualizando diseño...</p>
+                )}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={handleDownloadQR}
@@ -359,6 +688,256 @@ function App() {
           </div>
         </div>
         </div>
+
+        {displayedQrImage && (
+          <section className="mt-10">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
+              <div className="px-6 py-5 border-b border-gray-100 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-widest text-indigo-500 font-semibold">Paso 3</p>
+                  <h2 className="text-xl font-bold text-gray-900">Diseña tu código QR</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Personaliza el marco, los colores y añade un logo para que destaque en tus campañas.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs bg-slate-100 rounded-full px-4 py-1 text-slate-600">
+                  <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                  Vista previa en tiempo real
+                </div>
+              </div>
+              <div className="p-6 flex flex-col lg:flex-row gap-8">
+                <div className="flex-1 space-y-4">
+                  <DesignerSection
+                    id="frame"
+                    title="Marco"
+                    description="Los marcos ayudan a destacar tu QR y añadir mensajes claros."
+                    open={accordionOpen.frame}
+                    onToggle={toggleSection}
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {FRAME_OPTIONS.map((frame) => (
+                        <button
+                          key={frame.id}
+                          onClick={() => updateDesign({ frameStyle: frame.id })}
+                          className={`border rounded-xl p-3 text-left text-sm transition ${
+                            designOptions.frameStyle === frame.id
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-inner">
+                              {frame.id === 'scooter' ? '🛵' : frame.id === 'badge' ? '⭐' : frame.id === 'soft-card' ? '🪪' : '⬜️'}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-gray-900">{frame.label}</p>
+                              <p className="text-xs text-gray-500">{frame.description}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500">Texto del marco</label>
+                        <input
+                          type="text"
+                          maxLength={40}
+                          value={designOptions.frameText}
+                          onChange={(e) => updateDesign({ frameText: e.target.value })}
+                          className="mt-2 w-full rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2.5"
+                          placeholder="¡Escanéame!"
+                        />
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <ColorController
+                          label="Color del marco"
+                          value={designOptions.frameColor}
+                          onChange={(value) => updateDesign({ frameColor: value })}
+                          gradientEnabled={designOptions.frameUseGradient}
+                          onToggleGradient={(checked) => updateDesign({ frameUseGradient: checked })}
+                          gradientStart={designOptions.frameGradientStart}
+                          gradientEnd={designOptions.frameGradientEnd}
+                          onChangeGradientStart={(value) => updateDesign({ frameGradientStart: value })}
+                          onChangeGradientEnd={(value) => updateDesign({ frameGradientEnd: value })}
+                        />
+                        <ColorController
+                          label="Color del fondo del marco"
+                          value={designOptions.frameBgColor}
+                          onChange={(value) => updateDesign({ frameBgColor: value })}
+                          gradientEnabled={designOptions.frameBgUseGradient}
+                          onToggleGradient={(checked) => updateDesign({ frameBgUseGradient: checked })}
+                          gradientStart={designOptions.frameBgGradientStart}
+                          gradientEnd={designOptions.frameBgGradientEnd}
+                          onChangeGradientStart={(value) => updateDesign({ frameBgGradientStart: value })}
+                          onChangeGradientEnd={(value) => updateDesign({ frameBgGradientEnd: value })}
+                        />
+                      </div>
+                      <ColorController
+                        label="Color del texto del marco"
+                        value={designOptions.frameTextColor}
+                        onChange={(value) => updateDesign({ frameTextColor: value })}
+                      />
+                    </div>
+                  </DesignerSection>
+
+                  <DesignerSection
+                    id="pattern"
+                    title="Patrón del código QR"
+                    description="Elige el estilo del patrón y personaliza los colores."
+                    open={accordionOpen.pattern}
+                    onToggle={toggleSection}
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {PATTERN_OPTIONS.map((pattern) => (
+                        <button
+                          key={pattern.id}
+                          onClick={() => updateDesign({ patternStyle: pattern.id })}
+                          className={`p-3 rounded-xl border text-sm ${
+                            designOptions.patternStyle === pattern.id
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900">{pattern.label}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4 mt-4">
+                      <ColorController
+                        label="Color del patrón"
+                        value={designOptions.patternColor}
+                        onChange={(value) => updateDesign({ patternColor: value })}
+                        gradientEnabled={designOptions.patternUseGradient}
+                        onToggleGradient={(checked) => updateDesign({ patternUseGradient: checked })}
+                        gradientStart={designOptions.patternGradientStart}
+                        gradientEnd={designOptions.patternGradientEnd}
+                        onChangeGradientStart={(value) => updateDesign({ patternGradientStart: value })}
+                        onChangeGradientEnd={(value) => updateDesign({ patternGradientEnd: value })}
+                      />
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-center justify-between text-xs text-gray-500 font-semibold">
+                          <span>Color del fondo del patrón</span>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={designOptions.patternBgTransparent}
+                              onChange={(e) => updateDesign({ patternBgTransparent: e.target.checked })}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            Transparente
+                          </label>
+                        </div>
+                        {!designOptions.patternBgTransparent && (
+                          <div className="mt-3">
+                            <ColorSwatch
+                              value={designOptions.patternBgColor}
+                              onChange={(value) => updateDesign({ patternBgColor: value })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </DesignerSection>
+
+                  <DesignerSection
+                    id="corners"
+                    title="Esquinas del QR"
+                    description="Ajusta el estilo y los colores de los puntos de detección."
+                    open={accordionOpen.corners}
+                    onToggle={toggleSection}
+                  >
+                    <div className="flex flex-wrap gap-3">
+                      {CORNER_OPTIONS.map((corner) => (
+                        <button
+                          key={corner.id}
+                          onClick={() => updateDesign({ cornerStyle: corner.id })}
+                          className={`px-4 py-2 rounded-full border text-sm ${
+                            designOptions.cornerStyle === corner.id
+                              ? 'border-indigo-500 text-indigo-600'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          {corner.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid md:grid-cols-2 gap-4">
+                      <ColorController
+                        label="Color exterior"
+                        value={designOptions.cornerOuterColor}
+                        onChange={(value) => updateDesign({ cornerOuterColor: value })}
+                      />
+                      <ColorController
+                        label="Color interior"
+                        value={designOptions.cornerInnerColor}
+                        onChange={(value) => updateDesign({ cornerInnerColor: value })}
+                      />
+                    </div>
+                  </DesignerSection>
+
+                  <DesignerSection
+                    id="logo"
+                    title="Añadir logo"
+                    description="Haz único tu código QR cargando tu logo o icono."
+                    open={accordionOpen.logo}
+                    onToggle={toggleSection}
+                  >
+                    <div className="space-y-4">
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center text-sm text-gray-500 hover:border-indigo-400 transition cursor-pointer">
+                        <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                        {designOptions.logoDataUrl ? (
+                          <>
+                            <img src={designOptions.logoDataUrl} alt="Logo cargado" className="h-20 w-20 object-contain mb-3" />
+                            <span className="font-semibold text-gray-900">Actualizar logo</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-3xl mb-2">➕</span>
+                            <span>Sube tu logo (máx. 1MB)</span>
+                          </>
+                        )}
+                      </label>
+                      {designOptions.logoDataUrl && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gray-50 rounded-xl p-4">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Tamaño del logo</p>
+                            <p className="text-xs text-gray-500">Ajusta qué tanto ocupa dentro del QR.</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0.15"
+                              max="0.35"
+                              step="0.01"
+                              value={designOptions.logoSize}
+                              onChange={(e) => updateDesign({ logoSize: Number(e.target.value) })}
+                              className="w-full sm:w-48 accent-indigo-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={clearLogo}
+                              className="text-xs text-gray-500 hover:text-red-500"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </DesignerSection>
+                </div>
+
+                <div className="lg:w-1/3">
+                  <PhonePreview image={displayedQrImage} loading={designLoading} />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
       <footer className="mt-auto bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-500 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between text-sm">
@@ -394,5 +973,201 @@ function App() {
     </div>
   );
 }
+type PaintOptions = {
+  color: string;
+  useGradient?: boolean;
+  gradientStart?: string;
+  gradientEnd?: string;
+};
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+
+const getPaintStyle = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  paint: PaintOptions
+) => {
+  if (paint.useGradient) {
+    const gradient = ctx.createLinearGradient(x, y, x + width, y);
+    gradient.addColorStop(0, paint.gradientStart ?? paint.color);
+    gradient.addColorStop(1, paint.gradientEnd ?? paint.color);
+    return gradient;
+  }
+  return paint.color;
+};
+
+const drawRoundedRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fill: PaintOptions,
+  stroke?: PaintOptions
+) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  const path = new Path2D();
+  path.moveTo(x + r, y);
+  path.lineTo(x + width - r, y);
+  path.quadraticCurveTo(x + width, y, x + width, y + r);
+  path.lineTo(x + width, y + height - r);
+  path.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  path.lineTo(x + r, y + height);
+  path.quadraticCurveTo(x, y + height, x, y + height - r);
+  path.lineTo(x, y + r);
+  path.quadraticCurveTo(x, y, x + r, y);
+  path.closePath();
+
+  ctx.save();
+  ctx.fillStyle = getPaintStyle(ctx, x, y, width, height, fill);
+  ctx.fill(path);
+  if (stroke) {
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = getPaintStyle(ctx, x, y, width, height, stroke);
+    ctx.stroke(path);
+  }
+  ctx.restore();
+};
+
+const drawScooter = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  color: string
+) => {
+  ctx.save();
+  ctx.translate(x, y);
+  const scale = width / 24;
+  ctx.scale(scale, scale);
+  ctx.fillStyle = color;
+  const path = new Path2D(SCOOTER_PATH);
+  ctx.fill(path);
+  ctx.restore();
+};
+
+const applyFrameToQr = (qrDataUrl: string, design: DesignOptions): Promise<string> =>
+  new Promise((resolve) => {
+    if (design.frameStyle === 'none') {
+      resolve(qrDataUrl);
+      return;
+    }
+
+    const image = new Image();
+    image.src = qrDataUrl;
+    image.onload = () => {
+      const baseSize = 420;
+      const horizontalPadding = 90;
+      const topPadding = 70;
+      const bottomPadding = 140;
+      const canvasWidth = baseSize + horizontalPadding * 2;
+      const canvasHeight =
+        baseSize +
+        topPadding +
+        bottomPadding +
+        (design.frameStyle === 'scooter' ? 80 : 0);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(qrDataUrl);
+        return;
+      }
+
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      const frameX = (canvasWidth - (baseSize + 80)) / 2;
+      const frameY = 40;
+      const frameWidth = baseSize + 80;
+      const frameHeight = baseSize + 120;
+
+      drawRoundedRect(
+        ctx,
+        frameX,
+        frameY,
+        frameWidth,
+        frameHeight,
+        40,
+        {
+          color: design.frameBgColor,
+          useGradient: design.frameBgUseGradient,
+          gradientStart: design.frameBgGradientStart,
+          gradientEnd: design.frameBgGradientEnd,
+        },
+        {
+          color: design.frameColor,
+          useGradient: design.frameUseGradient,
+          gradientStart: design.frameGradientStart,
+          gradientEnd: design.frameGradientEnd,
+        }
+      );
+
+      if (design.frameStyle === 'badge') {
+        ctx.fillStyle = design.frameColor;
+        ctx.fillRect(frameX, frameY, 14, frameHeight);
+      }
+
+      const qrX = (canvasWidth - baseSize) / 2;
+      const qrY = frameY + 30;
+      ctx.drawImage(image, qrX, qrY, baseSize, baseSize);
+
+      if (design.frameText) {
+        ctx.font = '600 32px "Inter", sans-serif';
+        ctx.fillStyle = design.frameTextColor;
+        ctx.textAlign = 'center';
+        ctx.fillText(
+          design.frameText,
+          canvasWidth / 2,
+          qrY + baseSize + 60
+        );
+      }
+
+      if (design.frameStyle === 'scooter') {
+        drawScooter(ctx, canvasWidth / 2 - 120, qrY + baseSize + 40, 200, design.frameColor);
+      }
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.onerror = () => resolve(qrDataUrl);
+  });
+
+const PhonePreview = ({ image, loading }: { image: string; loading: boolean }) => (
+  <div className="relative bg-slate-900 text-white rounded-[32px] p-6 shadow-2xl border border-slate-800">
+    <div className="absolute inset-x-24 -top-2 h-2 rounded-full bg-white/30" />
+    <div className="rounded-[26px] bg-black/20 border border-white/10 p-4">
+      <div className="rounded-[24px] bg-white/90 p-4 min-h-[320px] flex items-center justify-center">
+        {image ? (
+          <img
+            src={image}
+            alt="Vista previa del QR"
+            className="max-w-full rounded-2xl shadow-lg"
+          />
+        ) : (
+          <p className="text-center text-sm text-gray-500">Genera tu QR para ver la vista previa</p>
+        )}
+      </div>
+      <div className="mt-4 text-center">
+        {loading ? (
+          <p className="text-xs text-emerald-300 animate-pulse">Actualizando estilo...</p>
+        ) : (
+          <p className="text-xs text-white/70">Muestra aproximada de cómo se verá en tu campaña</p>
+        )}
+      </div>
+    </div>
+  </div>
+);
 
 export default App;
