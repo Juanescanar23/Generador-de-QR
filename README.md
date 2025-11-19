@@ -1,6 +1,6 @@
 # Generador de Código QR (Frontend + Backend)
 
-Aplicación full-stack que permite generar códigos QR de enlaces o números de WhatsApp con mensajes predefinidos. Se compone de un backend en Express que expone un endpoint `/api/generate-qr` y un frontend en React + Vite que consume dicho endpoint y permite descargar la imagen resultante.
+Aplicación full-stack que permite generar códigos QR de enlaces o números de WhatsApp con mensajes predefinidos. Incluye una pestaña “Compartir link” para crear enlaces `wa.me` listos para copiar y enviar. Se compone de un backend en Express que expone un endpoint `/api/generate-qr` y un frontend en React + Vite que consume dicho endpoint y permite descargar la imagen resultante.
 
 ## Stack principal
 
@@ -91,9 +91,10 @@ VITE_API_BASE_URL=http://localhost:3800/api
 ## Flujo de funcionamiento
 
 1. El usuario ingresa una URL o número de WhatsApp (se limpia y valida en `App.tsx`).
-2. El frontend envía la petición `POST` a `${VITE_API_BASE_URL}/generate-qr`.
-3. El backend valida el cuerpo, genera un `data:image/png;base64` usando `qrcode` y lo devuelve.
-4. El frontend muestra el QR y permite descargar la imagen directamente.
+2. En la pestaña “Compartir link” se genera además un enlace `https://wa.me/...` copiable sin necesidad de QR.
+3. El frontend envía la petición `POST` a `${VITE_API_BASE_URL}/generate-qr`.
+4. El backend valida el cuerpo, genera un `data:image/png;base64` usando `qrcode` y lo devuelve.
+5. El frontend muestra el QR, permite descargar la imagen y copiar (si aplica) el enlace directo de WhatsApp.
 
 ## Despliegue en Vercel
 
