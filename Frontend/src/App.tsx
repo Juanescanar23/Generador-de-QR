@@ -804,6 +804,58 @@ function App() {
               <div className="p-6 flex flex-col lg:flex-row gap-8">
                 <div className="flex-1 space-y-4">
                   <DesignerSection
+                    id="logo"
+                    title="Añadir logo"
+                    description="Haz único tu código QR cargando tu logo o icono."
+                    open={accordionOpen.logo}
+                    onToggle={toggleSection}
+                    icon={<Droplets className="h-5 w-5" />}
+                  >
+                    <div className="space-y-4">
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center text-sm text-gray-500 hover:border-indigo-400 transition cursor-pointer">
+                        <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                        {designOptions.logoDataUrl ? (
+                          <>
+                            <img src={designOptions.logoDataUrl} alt="Logo cargado" className="h-20 w-20 object-contain mb-3" />
+                            <span className="font-semibold text-gray-900">Actualizar logo</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-3xl mb-2">➕</span>
+                            <span>Sube tu logo (máx. 1MB)</span>
+                          </>
+                        )}
+                      </label>
+                      {designOptions.logoDataUrl && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gray-50 rounded-xl p-4">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Tamaño del logo</p>
+                            <p className="text-xs text-gray-500">Ajusta qué tanto ocupa dentro del QR.</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0.15"
+                              max="0.35"
+                              step="0.01"
+                              value={designOptions.logoSize}
+                              onChange={(e) => updateDesign({ logoSize: Number(e.target.value) })}
+                              className="w-full sm:w-48 accent-indigo-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={clearLogo}
+                              className="text-xs text-gray-500 hover:text-red-500"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </DesignerSection>
+
+                  <DesignerSection
                     id="frame"
                     title="Marco"
                     description="Los marcos ayudan a destacar tu QR y añadir mensajes claros."
@@ -978,57 +1030,6 @@ function App() {
                     </div>
                   </DesignerSection>
 
-                  <DesignerSection
-                    id="logo"
-                    title="Añadir logo"
-                    description="Haz único tu código QR cargando tu logo o icono."
-                    open={accordionOpen.logo}
-                    onToggle={toggleSection}
-                    icon={<Droplets className="h-5 w-5" />}
-                  >
-                    <div className="space-y-4">
-                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center text-sm text-gray-500 hover:border-indigo-400 transition cursor-pointer">
-                        <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                        {designOptions.logoDataUrl ? (
-                          <>
-                            <img src={designOptions.logoDataUrl} alt="Logo cargado" className="h-20 w-20 object-contain mb-3" />
-                            <span className="font-semibold text-gray-900">Actualizar logo</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-3xl mb-2">➕</span>
-                            <span>Sube tu logo (máx. 1MB)</span>
-                          </>
-                        )}
-                      </label>
-                      {designOptions.logoDataUrl && (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gray-50 rounded-xl p-4">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Tamaño del logo</p>
-                            <p className="text-xs text-gray-500">Ajusta qué tanto ocupa dentro del QR.</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="range"
-                              min="0.15"
-                              max="0.35"
-                              step="0.01"
-                              value={designOptions.logoSize}
-                              onChange={(e) => updateDesign({ logoSize: Number(e.target.value) })}
-                              className="w-full sm:w-48 accent-indigo-600"
-                            />
-                            <button
-                              type="button"
-                              onClick={clearLogo}
-                              className="text-xs text-gray-500 hover:text-red-500"
-                            >
-                              Quitar
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </DesignerSection>
                 </div>
 
                 <div className="lg:w-1/3">
