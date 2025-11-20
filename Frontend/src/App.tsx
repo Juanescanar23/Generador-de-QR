@@ -1,6 +1,7 @@
 import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState, type SVGProps } from 'react';
 import { ChevronDown, Code2, Link, MessageCircle } from 'lucide-react';
 import QRCodeStyling from 'qr-code-styling';
+import { COUNTRY_OPTIONS, type CountryOption } from './countries';
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? 'https://generador-qr-backend.vercel.app/api'
@@ -126,10 +127,16 @@ function App() {
   const [shareStatus, setShareStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<GeneratorType>('url'); // 'url', 'whatsapp' o 'share'
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<CountryOption>(
+    COUNTRY_OPTIONS.find((c) => c.code === 'CO') ?? COUNTRY_OPTIONS[0]
+  );
   const [lastGeneratedValue, setLastGeneratedValue] = useState('');
   const [designOptions, setDesignOptions] = useState<DesignOptions>(DEFAULT_DESIGN_OPTIONS);
   const [styledQrImage, setStyledQrImage] = useState('');
   const [designLoading, setDesignLoading] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [accordionOpen, setAccordionOpen] = useState<Record<string, boolean>>({
     frame: true,
     pattern: true,
@@ -142,6 +149,16 @@ function App() {
     return backendVersion ?? '1.0.0';
   }, []);
   const displayedQrImage = styledQrImage || qrCodeImage;
+
+  const filteredCountries = useMemo(() => {
+    const term = countrySearch.trim().toLowerCase();
+    if (!term) return COUNTRY_OPTIONS;
+    return COUNTRY_OPTIONS.filter((country) =>
+      country.name.toLowerCase().includes(term) ||
+      country.dialCode.toLowerCase().includes(term) ||
+      country.code.toLowerCase().includes(term)
+    );
+  }, [countrySearch]);
 
   const updateDesign = (updates: Partial<DesignOptions>) => {
     setDesignOptions((prev) => ({ ...prev, ...updates }));
@@ -157,8 +174,14 @@ function App() {
     setCopyMessage('');
   };
 
+  const handleCountrySelect = (country: CountryOption) => {
+    setSelectedCountry(country);
+    setIsCountryOpen(false);
+    setCountrySearch('');
+  };
+
   const generateQRCode = async () => {
-    const trimmedInput = url.trim();
+    const trimmedInput = (type === 'url' ? url : phoneNumber).trim();
 
     if (!trimmedInput) {
       const label =
@@ -172,15 +195,20 @@ function App() {
     let finalUrl = trimmedInput;
     if (type === 'whatsapp' || type === 'share') {
       const cleanNumber = trimmedInput.replace(/[^\d]/g, '');
+      const dialDigits = selectedCountry.dialCode.replace(/[^\d]/g, '');
+      const localNumber = cleanNumber.startsWith(dialDigits)
+        ? cleanNumber.slice(dialDigits.length)
+        : cleanNumber;
 
-      if (cleanNumber.length < 8) {
-        alert('Por favor ingresa un número con formato internacional (al menos 8 dígitos).');
+      if (localNumber.length < 6) {
+        alert('Por favor ingresa un número válido (al menos 6 dígitos sin incluir el código).');
         return;
       }
 
+      const finalNumber = `${dialDigits}${localNumber}`;
       const trimmedMessage = whatsappMessage.trim();
       const encodedMessage = trimmedMessage ? encodeURIComponent(trimmedMessage) : '';
-      finalUrl = `https://wa.me/${cleanNumber}${encodedMessage ? `?text=${encodedMessage}` : ''}`;
+      finalUrl = `https://wa.me/${finalNumber}${encodedMessage ? `?text=${encodedMessage}` : ''}`;
     }
 
     if (type === 'share') {
@@ -566,26 +594,77 @@ function App() {
               </div>
 
               <label className="block text-sm font-medium text-gray-700">
-                {type === 'url' ? 'URL de la página' : 'Número de WhatsApp'}
+                {type === 'url' ? 'URL de la página' : 'Número de teléfono'}
               </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  {type === 'url' ? (
+              {type === 'url' ? (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
                     <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
-                  ) : type === 'share' ? (
-                    <WhatsappIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
-                  ) : (
-                    <MessageCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
-                  )}
-                  <input
-                    type={type === 'url' ? 'url' : 'tel'}
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder={type === 'url' ? 'https://ejemplo.com' : '51999999999'}
-                    className="pl-9 sm:pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 sm:p-2.5 text-sm sm:text-base border"
-                  />
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://ejemplo.com"
+                      className="pl-9 sm:pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 sm:p-2.5 text-sm sm:text-base border"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="relative flex w-full items-stretch rounded-md border border-gray-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 overflow-visible">
+                    <button
+                      type="button"
+                      onClick={() => setIsCountryOpen((prev) => !prev)}
+                      className="flex items-center gap-2 pl-3 pr-8 text-base sm:text-lg font-semibold text-gray-800 focus:outline-none"
+                    >
+                      <span className="text-xl" aria-hidden="true">{selectedCountry.flag}</span>
+                      <span>{selectedCountry.dialCode}</span>
+                      <ChevronDown className="pointer-events-none absolute left-16 sm:left-20 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    </button>
+                    <div className="w-px bg-gray-200" />
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="3001234567"
+                      className="flex-1 border-0 bg-transparent text-sm sm:text-base focus:outline-none focus:ring-0 px-3"
+                    />
+
+                    {isCountryOpen && (
+                      <div className="absolute left-0 top-full mt-1 w-72 sm:w-80 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <div className="p-2 border-b border-gray-100">
+                          <input
+                            type="text"
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                            placeholder="Busca país o código"
+                            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto">
+                          {filteredCountries.length === 0 && (
+                            <p className="px-3 py-2 text-sm text-gray-500">No se encontraron resultados</p>
+                          )}
+                          {filteredCountries.map((country) => (
+                            <button
+                              key={country.code}
+                              type="button"
+                              onClick={() => handleCountrySelect(country)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition"
+                            >
+                              <span className="flex items-center gap-2 text-gray-800">
+                                <span className="text-lg" aria-hidden="true">{country.flag}</span>
+                                <span>{country.name}</span>
+                              </span>
+                              <span className="text-gray-600 font-medium">{country.dialCode}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Campo de mensaje para WhatsApp */}
               {type !== 'url' && (
