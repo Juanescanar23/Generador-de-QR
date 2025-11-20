@@ -361,7 +361,12 @@ function App() {
             color: designOptions.cornerOuterColor,
           },
           cornersDotOptions: {
-            type: designOptions.cornerStyle === 'square' ? 'square' : 'dot',
+            type:
+              designOptions.cornerStyle === 'square'
+                ? 'square'
+                : designOptions.cornerStyle === 'extra-rounded'
+                  ? 'extra-rounded'
+                  : 'dot',
             color: designOptions.cornerInnerColor,
           },
           backgroundOptions: {
