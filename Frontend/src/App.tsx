@@ -146,20 +146,7 @@ function App() {
   const currentYear = new Date().getFullYear();
   const appVersion = useMemo(() => {
     const backendVersion = import.meta.env.VITE_BACKEND_VERSION;
-    const buildTime = typeof __APP_BUILD_TIME__ === 'string' ? __APP_BUILD_TIME__ : '';
-    const buildId = typeof __APP_BUILD_ID__ === 'string' ? __APP_BUILD_ID__ : '';
-
-    let buildLabel = '';
-    if (buildTime) {
-      const parsed = new Date(buildTime);
-      buildLabel = Number.isNaN(parsed.valueOf())
-        ? buildTime
-        : parsed.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-    } else if (buildId) {
-      buildLabel = buildId;
-    }
-
-    return [backendVersion, buildLabel || 'build'].filter(Boolean).join(' · ');
+    return backendVersion ?? '1.0.0';
   }, []);
   const displayedQrImage = styledQrImage || qrCodeImage;
 
