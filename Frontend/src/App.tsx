@@ -367,15 +367,13 @@ function App() {
           backgroundOptions: {
             color: designOptions.patternBgTransparent ? 'rgba(0,0,0,0)' : designOptions.patternBgColor,
           },
-          imageOptions: designOptions.logoDataUrl
-            ? {
-                crossOrigin: 'anonymous',
-                hideBackgroundDots: false,
-                image: designOptions.logoDataUrl,
-                margin: 8,
-                imageSize: designOptions.logoSize,
-              }
-            : undefined,
+          imageOptions: {
+            crossOrigin: 'anonymous',
+            hideBackgroundDots: false,
+            image: designOptions.logoDataUrl || undefined,
+            margin: designOptions.logoDataUrl ? 8 : 0,
+            imageSize: designOptions.logoSize,
+          },
         });
 
         const rawData = await qr.getRawData('png');
