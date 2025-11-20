@@ -1,3 +1,4 @@
+import { jsPDF } from 'jspdf';
 import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState, type SVGProps } from 'react';
 import { BadgeCheck, ChevronDown, Code2, Droplets, Layers, Link, MessageCircle, Palette, Scan } from 'lucide-react';
 import QRCodeStyling from 'qr-code-styling';
@@ -117,6 +118,7 @@ const SCOOTER_PATH =
   'M5.5 16.5h2.2l1-2.8h6.1l1.1 2.8h1.6a3 3 0 110 2h-1.3a3 3 0 11-5.6 0H8.7a3 3 0 11-5.6 0H2v-2h1.6l.9-2.4a3 3 0 012.8-2h2.8L16 6.5h3.4L20.9 9h-3.6l-2.2 3.7h-6.4l-.6 1.8h-3z';
 
 type GeneratorType = 'url' | 'whatsapp' | 'share';
+type DownloadFormat = 'png' | 'jpg' | 'pdf' | 'svg';
 
 function App() {
   const [url, setUrl] = useState('');
@@ -143,6 +145,7 @@ function App() {
     corners: true,
     logo: false,
   });
+  const [downloadFormat, setDownloadFormat] = useState<DownloadFormat>('png');
   const currentYear = new Date().getFullYear();
   const appVersion = useMemo(() => {
     const backendVersion = import.meta.env.VITE_BACKEND_VERSION;
@@ -261,13 +264,7 @@ function App() {
 
   const handleDownloadQR = () => {
     if (!displayedQrImage) return;
-
-    const a = document.createElement('a');
-    a.href = displayedQrImage;
-    a.download = 'qrcode.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadQrInFormat(displayedQrImage, downloadFormat);
   };
 
   const handleShareQR = async () => {
@@ -755,19 +752,34 @@ function App() {
                 {designLoading && (
                   <p className="text-xs text-gray-500">Actualizando diseño...</p>
                 )}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button
-                    onClick={handleDownloadQR}
-                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm sm:text-base"
-                  >
-                    Descargar QR
-                  </button>
-                  <button
-                    onClick={handleShareQR}
-                    className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-                  >
-                    Compartir QR
-                  </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+                  <div className="w-full sm:w-auto flex items-center gap-2 bg-white rounded-md border border-purple-200 px-3 py-2 shadow-inner">
+                    <label className="text-xs font-semibold text-gray-600">Formato</label>
+                    <select
+                      value={downloadFormat}
+                      onChange={(e) => setDownloadFormat(e.target.value as DownloadFormat)}
+                      className="text-sm border-0 focus:ring-0 bg-transparent font-semibold text-purple-700"
+                    >
+                      <option value="png">PNG</option>
+                      <option value="jpg">JPG</option>
+                      <option value="pdf">PDF</option>
+                      <option value="svg">SVG</option>
+                    </select>
+                  </div>
+                  <div className="flex w-full sm:w-auto gap-3">
+                    <button
+                      onClick={handleDownloadQR}
+                      className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm sm:text-base"
+                    >
+                      Descargar
+                    </button>
+                    <button
+                      onClick={handleShareQR}
+                      className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                    >
+                      Compartir
+                    </button>
+                  </div>
                 </div>
                 {shareStatus && (
                   <p className="text-xs text-green-600">{shareStatus}</p>
@@ -1087,6 +1099,83 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.onloadend = () => resolve(reader.result as string);
     reader.readAsDataURL(blob);
   });
+
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const [meta, base64] = dataUrl.split(',');
+  const mimeMatch = /data:(.*?);/.exec(meta);
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+};
+
+const loadImageFromDataUrl = (dataUrl: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const downloadQrInFormat = async (dataUrl: string, format: DownloadFormat) => {
+  try {
+    if (format === 'png') {
+      downloadBlob(dataUrlToBlob(dataUrl), 'qrcode.png');
+      return;
+    }
+
+    const image = await loadImageFromDataUrl(dataUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      downloadBlob(dataUrlToBlob(dataUrl), `qrcode.${format === 'jpg' ? 'jpg' : 'png'}`);
+      return;
+    }
+    ctx.drawImage(image, 0, 0);
+
+    if (format === 'jpg') {
+      const jpgData = canvas.toDataURL('image/jpeg', 0.92);
+      downloadBlob(dataUrlToBlob(jpgData), 'qrcode.jpg');
+      return;
+    }
+
+    if (format === 'pdf') {
+      const pdf = new jsPDF({
+        unit: 'px',
+        format: [canvas.width + 40, canvas.height + 40],
+      });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 20, 20, canvas.width, canvas.height);
+      pdf.save('qrcode.pdf');
+      return;
+    }
+
+    if (format === 'svg') {
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}"><image href="${dataUrl}" width="${canvas.width}" height="${canvas.height}" /></svg>`;
+      const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+      downloadBlob(svgBlob, 'qrcode.svg');
+    }
+  } catch (err) {
+    console.error('No se pudo descargar el QR en el formato seleccionado', err);
+    downloadBlob(dataUrlToBlob(dataUrl), 'qrcode.png');
+  }
+};
 
 const getPaintStyle = (
   ctx: CanvasRenderingContext2D,
