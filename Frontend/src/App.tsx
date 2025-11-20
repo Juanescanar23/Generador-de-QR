@@ -1,5 +1,5 @@
 import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState, type SVGProps } from 'react';
-import { ChevronDown, Code2, Link, MessageCircle } from 'lucide-react';
+import { BadgeCheck, ChevronDown, Code2, Droplets, Layers, Link, MessageCircle, Palette, Scan } from 'lucide-react';
 import QRCodeStyling from 'qr-code-styling';
 import { COUNTRY_OPTIONS, type CountryOption } from './countries';
 
@@ -413,25 +413,34 @@ function App() {
     children,
     open,
     onToggle,
+    icon,
   }: {
     id: string;
     title: string;
     description: string;
     children: ReactNode;
     open: boolean;
+    icon: ReactNode;
     onToggle: (key: keyof typeof accordionOpen) => void;
   }) => (
-    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)]">
+    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white/90 shadow-[0_10px_50px_rgba(79,70,229,0.08)] backdrop-blur">
       <button
         type="button"
         onClick={() => onToggle(id as keyof typeof accordionOpen)}
-        className="w-full px-5 py-4 flex items-center justify-between"
+        className="w-full px-5 py-4 flex items-center justify-between hover:bg-indigo-50/50 transition-colors"
       >
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
-          <p className="text-xs text-gray-500">{description}</p>
+        <div className="flex items-center gap-3">
+          <span className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+            {icon}
+          </span>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+          </div>
         </div>
-        <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${open ? '' : 'rotate-180'}`} />
+        <ChevronDown
+          className={`h-5 w-5 text-gray-500 transition-transform ${open ? '' : 'rotate-180'}`}
+        />
       </button>
       <div
         className={`transition-all duration-300 ${
@@ -768,17 +777,22 @@ function App() {
 
         {displayedQrImage && (
           <section className="mt-10">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
-              <div className="px-6 py-5 border-b border-gray-100 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-widest text-indigo-500 font-semibold">Paso 3</p>
-                  <h2 className="text-xl font-bold text-gray-900">Diseña tu código QR</h2>
-                  <p className="text-sm text-gray-500 mt-1">
+            <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-100/60 rounded-3xl shadow-[0_25px_80px_rgba(79,70,229,0.08)] overflow-hidden">
+              <div className="px-6 py-6 border-b border-indigo-100/60 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-600 shadow-sm">
+                    <Scan className="h-4 w-4" />
+                    Paso 3
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-900">Diseña tu código QR</h2>
+                  </div>
+                  <p className="text-sm text-slate-600">
                     Personaliza el marco, los colores y añade un logo para que destaque en tus campañas.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 text-xs bg-slate-100 rounded-full px-4 py-1 text-slate-600">
-                  <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                <div className="flex items-center gap-2 text-xs bg-white/80 backdrop-blur rounded-full px-4 py-2 text-slate-700 shadow-inner">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
                   Vista previa en tiempo real
                 </div>
               </div>
@@ -790,6 +804,7 @@ function App() {
                     description="Los marcos ayudan a destacar tu QR y añadir mensajes claros."
                     open={accordionOpen.frame}
                     onToggle={toggleSection}
+                    icon={<BadgeCheck className="h-5 w-5" />}
                   >
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {FRAME_OPTIONS.map((frame) => (
@@ -865,6 +880,7 @@ function App() {
                     description="Elige el estilo del patrón y personaliza los colores."
                     open={accordionOpen.pattern}
                     onToggle={toggleSection}
+                    icon={<Palette className="h-5 w-5" />}
                   >
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       {PATTERN_OPTIONS.map((pattern) => (
@@ -926,6 +942,7 @@ function App() {
                     description="Ajusta el estilo y los colores de los puntos de detección."
                     open={accordionOpen.corners}
                     onToggle={toggleSection}
+                    icon={<Layers className="h-5 w-5" />}
                   >
                     <div className="flex flex-wrap gap-3">
                       {CORNER_OPTIONS.map((corner) => (
@@ -962,6 +979,7 @@ function App() {
                     description="Haz único tu código QR cargando tu logo o icono."
                     open={accordionOpen.logo}
                     onToggle={toggleSection}
+                    icon={<Droplets className="h-5 w-5" />}
                   >
                     <div className="space-y-4">
                       <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center text-sm text-gray-500 hover:border-indigo-400 transition cursor-pointer">
