@@ -594,7 +594,7 @@ function App() {
                 <button
                   onClick={() => handleTypeChange('share')}
                   className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex-1 sm:flex-none justify-center ${
-                    type === 'share' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'
+                    type === 'share' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   <WhatsappIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -702,7 +702,7 @@ function App() {
                         ? 'bg-blue-600 hover:bg-blue-700'
                         : type === 'whatsapp'
                           ? 'bg-green-600 hover:bg-green-700'
-                          : 'bg-purple-600 hover:bg-purple-700'
+                          : 'bg-green-600 hover:bg-green-700'
                   } text-white rounded-md transition-colors disabled:cursor-not-allowed`}
                 >
                   {loading ? 'Generando...' : type === 'share' ? 'Generar enlace + QR' : 'Generar QR'}
@@ -725,12 +725,12 @@ function App() {
                     readOnly
                     value={shareLink}
                     placeholder="Genera un enlace para copiarlo aquí"
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 text-sm sm:text-base border"
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 text-sm sm:text-base border"
                   />
                   <button
                     onClick={handleCopyShareLink}
                     disabled={!shareLink}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                   >
                     Copiar enlace
                   </button>
