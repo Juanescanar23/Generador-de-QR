@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState, type SVGProps } from 'react';
-import { BadgeCheck, ChevronDown, Code2, Droplets, Layers, Link, MessageCircle, Palette, Scan } from 'lucide-react';
+import { BadgeCheck, ChevronDown, Code2, Droplets, Layers, Link, Palette, Scan } from 'lucide-react';
 import QRCodeStyling from 'qr-code-styling';
 import { COUNTRY_OPTIONS, type CountryOption } from './countries';
 
@@ -117,18 +117,18 @@ const CORNER_OPTIONS: Array<{ id: CornerStyle; label: string }> = [
 const SCOOTER_PATH =
   'M5.5 16.5h2.2l1-2.8h6.1l1.1 2.8h1.6a3 3 0 110 2h-1.3a3 3 0 11-5.6 0H8.7a3 3 0 11-5.6 0H2v-2h1.6l.9-2.4a3 3 0 012.8-2h2.8L16 6.5h3.4L20.9 9h-3.6l-2.2 3.7h-6.4l-.6 1.8h-3z';
 
-type GeneratorType = 'url' | 'whatsapp' | 'share';
+type GeneratorType = 'url' | 'share';
 type DownloadFormat = 'png' | 'jpg' | 'pdf' | 'svg';
 
 function App() {
   const [url, setUrl] = useState('');
-  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [message, setMessage] = useState('');
   const [qrCodeImage, setQrCodeImage] = useState('');
   const [shareLink, setShareLink] = useState('');
   const [copyMessage, setCopyMessage] = useState('');
   const [shareStatus, setShareStatus] = useState('');
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState<GeneratorType>('url'); // 'url', 'whatsapp' o 'share'
+  const [type, setType] = useState<GeneratorType>('url'); // 'url' o 'share'
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<CountryOption>(
     COUNTRY_OPTIONS.find((c) => c.code === 'CO') ?? COUNTRY_OPTIONS[0]
@@ -196,7 +196,7 @@ function App() {
     }
 
     let finalUrl = trimmedInput;
-    if (type === 'whatsapp' || type === 'share') {
+    if (type === 'share') {
       const cleanNumber = trimmedInput.replace(/[^\d]/g, '');
       const dialDigits = selectedCountry.dialCode.replace(/[^\d]/g, '');
       const localNumber = cleanNumber.startsWith(dialDigits)
@@ -209,7 +209,7 @@ function App() {
       }
 
       const finalNumber = `${dialDigits}${localNumber}`;
-      const trimmedMessage = whatsappMessage.trim();
+      const trimmedMessage = message.trim();
       const encodedMessage = trimmedMessage ? encodeURIComponent(trimmedMessage) : '';
       finalUrl = `https://wa.me/${finalNumber}${encodedMessage ? `?text=${encodedMessage}` : ''}`;
     }
@@ -548,13 +548,13 @@ function App() {
             <span className="whitespace-nowrap">Generador de Código QR</span>
           </h1>
           <p className="text-sm sm:text-base text-gray-600 px-4 max-w-2xl mx-auto">
-            Elige si quieres un QR clásico, un QR con mensaje de WhatsApp o solo el enlace <code className="bg-gray-100 px-1 py-0.5 rounded text-xs sm:text-sm">wa.me</code> listo para copiar.
+            Elige si quieres un QR clásico o solo el enlace <code className="bg-gray-100 px-1 py-0.5 rounded text-xs sm:text-sm">wa.me</code> listo para copiar (con mensaje opcional).
             Todo se crea en segundos y no necesitas registrarte.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 px-4">
             <div className="inline-flex items-center gap-2 bg-white shadow-sm rounded-full px-4 py-2 border border-gray-100 w-full sm:w-auto justify-center">
               <span className="font-semibold text-blue-600">1.</span>
-              <span>Selecciona URL, WhatsApp o Compartir link</span>
+              <span>Selecciona URL o Compartir link</span>
             </div>
             <div className="inline-flex items-center gap-2 bg-white shadow-sm rounded-full px-4 py-2 border border-gray-100 w-full sm:w-auto justify-center">
               <span className="font-semibold text-blue-600">2.</span>
@@ -581,15 +581,6 @@ function App() {
                 >
                   <Link className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>URL</span>
-                </button>
-                <button
-                  onClick={() => handleTypeChange('whatsapp')}
-                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base flex-1 sm:flex-none justify-center ${
-                    type === 'whatsapp' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span>WhatsApp</span>
                 </button>
                 <button
                   onClick={() => handleTypeChange('share')}
@@ -677,15 +668,15 @@ function App() {
                 </div>
               )}
 
-              {/* Campo de mensaje para WhatsApp */}
+              {/* Campo de mensaje opcional */}
               {type !== 'url' && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700">
                     Mensaje (opcional)
                   </label>
                   <textarea
-                    value={whatsappMessage}
-                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     placeholder="Escribe un mensaje que se enviará automáticamente..."
                     className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 sm:p-2.5 border text-sm sm:text-base"
                     rows={3}
@@ -702,9 +693,7 @@ function App() {
                       ? 'bg-gray-400'
                       : type === 'url'
                         ? 'bg-blue-600 hover:bg-blue-700'
-                        : type === 'whatsapp'
-                          ? 'bg-green-600 hover:bg-green-700'
-                          : 'bg-[#25D366] hover:bg-[#20c457]'
+                        : 'bg-[#25D366] hover:bg-[#20c457]'
                   } text-white rounded-md transition-colors disabled:cursor-not-allowed`}
                 >
                   {loading ? 'Generando...' : type === 'share' ? 'Generar enlace + QR' : 'Generar QR'}
